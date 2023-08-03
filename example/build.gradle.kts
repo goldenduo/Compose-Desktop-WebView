@@ -9,7 +9,7 @@ plugins {
 
 dependencies {
     jvmMainImplementation(project(":jcef"))
-//    jvmMainImplementation("com.github.goldenduo:Compose-Desktop-WebView:705a5ea936")
+//    jvmMainImplementation("com.github.goldenduo:Compose-Desktop-WebView:8c12ee9f8c")
 }
 
 listOf(

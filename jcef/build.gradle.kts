@@ -8,3 +8,7 @@ dependencies {
     jvmMainApi(libs.kotlinx.coroutines.core)
     jvmMainApi(libs.jcefmaven)
 }
+
+tasks.compileKotlinJvm{
+    kotlinOptions.jvmTarget="11"
+}
