@@ -8,8 +8,8 @@ plugins {
 }
 
 dependencies {
-//    jvmMainImplementation(project(":jcef"))
-    jvmMainImplementation("com.github.goldenduo:Compose-Desktop-WebView:main-SNAPSHOT")
+    jvmMainImplementation(project(":jcef"))
+//    jvmMainImplementation("com.github.goldenduo:Compose-Desktop-WebView:705a5ea936")
 }
 
 listOf(
