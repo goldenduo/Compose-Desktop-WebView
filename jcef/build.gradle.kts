@@ -4,7 +4,6 @@ plugins {
     `maven-publish`
 }
 group = "com.goldenduo.compose.desktop"
-
 dependencies {
     jvmMainApi(libs.kotlinx.coroutines.core)
     jvmMainApi(libs.jcefmaven)
