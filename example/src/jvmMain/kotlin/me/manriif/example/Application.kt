@@ -15,7 +15,7 @@ import androidx.compose.ui.window.FrameWindowScope
 import me.friwi.jcefmaven.EnumProgress
 import me.manriif.jcef.*
 
-const val PROJECT_GITHUB_PAGE = "https://github.com/Manriif/jcef-compose"
+const val PROJECT_GITHUB_PAGE = "https://baidu.com"
 
 fun cefApplication(
     title: State<String>,

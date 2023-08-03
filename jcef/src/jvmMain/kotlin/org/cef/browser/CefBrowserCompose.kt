@@ -1,3 +1,4 @@
+@file:Suppress("JAVA_MODULE_DOES_NOT_EXPORT_PACKAGE")
 package org.cef.browser
 
 import androidx.compose.runtime.getValue
@@ -12,6 +13,9 @@ import org.cef.handler.CefRenderHandler
 import org.cef.handler.CefScreenInfo
 import org.jetbrains.skia.Image
 import org.jetbrains.skiko.SkiaLayer
+import sun.awt.AWTAccessor
+import sun.lwawt.LWComponentPeer
+import sun.lwawt.macosx.CPlatformWindow
 import java.awt.*
 import java.awt.datatransfer.StringSelection
 import java.awt.dnd.*
@@ -19,6 +23,7 @@ import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
 import java.awt.image.BufferedImage
+import java.awt.peer.ComponentPeer
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
 import javax.swing.MenuSelectionManager
@@ -30,6 +35,7 @@ private const val WHEEL_ROTATION_FACTOR = 10
 /**
  * [CefBrowser] OSR implementation that will render into [BitmapRenderer].
  */
+
 internal class CefBrowserCompose(
     private val composeWindow: ComposeWindow,
     client: CefClient,
@@ -144,11 +150,40 @@ internal class CefBrowserCompose(
             justCreated = false
         }
     }
-
+    private fun getWindowHandleForMac(comp: Component?): Long {
+        if (Workaround.ANGEL_LIB_CONFLICT){
+            return 0
+        }
+        var comp = comp
+        val result = LongArray(1)
+        while (comp != null) {
+            if (comp.isLightweight) {
+                comp = comp.parent
+                continue
+            }
+            val peer = AWTAccessor.getComponentAccessor().getPeer<ComponentPeer>(comp)
+            if (peer is LWComponentPeer<*, *>) {
+                val pWindow = peer.platformWindow
+                if (pWindow is CPlatformWindow) {
+                    pWindow.execute {
+                            l -> result[0] = l
+                    }
+                    break
+                }
+            }
+            comp = comp.parent
+        }
+        return result[0]
+    }
     @Synchronized
     private fun getWindowHandle(): Long {
         if (this.windowHandle == 0L) {
-            this.windowHandle = getWindowHandle(composeWindow.windowHandle)
+            this.windowHandle =if (OS.isMacintosh()){
+                getWindowHandleForMac(uiComponent)
+            }else {
+                 composeWindow.windowHandle
+            }
+
             assert(windowHandle != 0L) { "windowHandle is equal to 0!" }
         }
 

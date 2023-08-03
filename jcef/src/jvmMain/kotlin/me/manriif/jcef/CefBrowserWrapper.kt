@@ -10,6 +10,7 @@ import org.cef.CefClient
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefRequestContext
 import org.cef.browser.CefBrowserCompose
+import org.cef.browser.Workaround
 import org.jetbrains.skia.Image
 import java.awt.KeyboardFocusManager
 import java.awt.event.MouseEvent
@@ -99,7 +100,8 @@ class CefBrowserComposeWrapper(
     }
 
     internal fun onFocusEvent(state: FocusState) {
-        if (state.isFocused) {
+
+        if (!Workaround.ANGEL_LIB_CONFLICT&&state.isFocused) {
             KeyboardFocusManager.getCurrentKeyboardFocusManager().clearGlobalFocusOwner()
         }
 
