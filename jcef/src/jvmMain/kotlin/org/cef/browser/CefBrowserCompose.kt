@@ -1,4 +1,3 @@
-@file:Suppress("JAVA_MODULE_DOES_NOT_EXPORT_PACKAGE")
 package org.cef.browser
 
 import androidx.compose.runtime.getValue
@@ -13,9 +12,6 @@ import org.cef.handler.CefRenderHandler
 import org.cef.handler.CefScreenInfo
 import org.jetbrains.skia.Image
 import org.jetbrains.skiko.SkiaLayer
-import sun.awt.AWTAccessor
-import sun.lwawt.LWComponentPeer
-import sun.lwawt.macosx.CPlatformWindow
 import java.awt.*
 import java.awt.datatransfer.StringSelection
 import java.awt.dnd.*
@@ -23,7 +19,6 @@ import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
 import java.awt.image.BufferedImage
-import java.awt.peer.ComponentPeer
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
 import javax.swing.MenuSelectionManager
@@ -43,8 +38,7 @@ internal class CefBrowserCompose(
     context: CefRequestContext? = null,
     parent: CefBrowserCompose? = null,
     inspectAt: Point? = null
-) : CefBrowser_N(client, url, context, parent, inspectAt),
-    CefRenderHandler {
+) : CefBrowser_N(client, url, context, parent, inspectAt), CefRenderHandler {
 
     private val uiComponent: Component = findCanvas(composeWindow) ?: composeWindow
     private val renderer = BitmapRenderer()
@@ -99,9 +93,8 @@ internal class CefBrowserCompose(
         }
 
         return try {
-            val scaleFactorAccessor = javaClass.classLoader!!
-                .loadClass("sun.awt.CGraphicsDevice")
-                .getDeclaredMethod("getScaleFactor")
+            val scaleFactorAccessor =
+                javaClass.classLoader!!.loadClass("sun.awt.CGraphicsDevice").getDeclaredMethod("getScaleFactor")
 
             val factor = scaleFactorAccessor.invoke(graphics2D.deviceConfiguration.device)
             (factor as? Int)?.toDouble() ?: 1.0
@@ -150,38 +143,34 @@ internal class CefBrowserCompose(
             justCreated = false
         }
     }
+
     private fun getWindowHandleForMac(comp: Component?): Long {
         if (Workaround.ANGEL_LIB_CONFLICT){
             return 0
         }
-        var comp = comp
-        val result = LongArray(1)
-        while (comp != null) {
-            if (comp.isLightweight) {
-                comp = comp.parent
-                continue
-            }
-            val peer = AWTAccessor.getComponentAccessor().getPeer<ComponentPeer>(comp)
-            if (peer is LWComponentPeer<*, *>) {
-                val pWindow = peer.platformWindow
-                if (pWindow is CPlatformWindow) {
-                    pWindow.execute {
-                            l -> result[0] = l
-                    }
-                    break
-                }
-            }
-            comp = comp.parent
+        try {
+            val cls = Class.forName("org.cef.browser.mac.CefBrowserWindowMac")
+            val browserWindow = cls.newInstance() as CefBrowserWindow
+
+            return browserWindow.getWindowHandle(comp)
+
+        } catch (e: ClassNotFoundException) {
+            e.printStackTrace()
+        } catch (e: InstantiationException) {
+            e.printStackTrace()
+        } catch (e: IllegalAccessException) {
+            e.printStackTrace()
         }
-        return result[0]
+        return 0
     }
+
     @Synchronized
     private fun getWindowHandle(): Long {
         if (this.windowHandle == 0L) {
-            this.windowHandle =if (OS.isMacintosh()){
+            this.windowHandle = if (OS.isMacintosh()) {
                 getWindowHandleForMac(uiComponent)
-            }else {
-                 composeWindow.windowHandle
+            } else {
+                composeWindow.windowHandle
             }
 
             assert(windowHandle != 0L) { "windowHandle is equal to 0!" }
@@ -195,11 +184,7 @@ internal class CefBrowserCompose(
     override fun getRenderHandler(): CefRenderHandler = this
 
     override fun createDevToolsBrowser(
-        client: CefClient,
-        url: String,
-        context: CefRequestContext,
-        parent: CefBrowser_N?,
-        inspectAt: Point
+        client: CefClient, url: String, context: CefRequestContext, parent: CefBrowser_N?, inspectAt: Point
     ): CefBrowser_N = CefBrowserCompose(composeWindow, client, url, context, this, inspectAt)
 
     override fun getViewRect(browser: CefBrowser): Rectangle = contentRect
@@ -240,11 +225,7 @@ internal class CefBrowserCompose(
     }
 
     override fun startDragging(
-        browser: CefBrowser,
-        dragData: CefDragData,
-        mask: Int,
-        x: Int,
-        y: Int
+        browser: CefBrowser, dragData: CefDragData, mask: Int, x: Int, y: Int
     ): Boolean {
         val action = getDndAction(mask)
         val triggerEvent = MouseEvent(composeWindow, MouseEvent.MOUSE_DRAGGED, 0, 0, x, y, 0, false)
@@ -256,30 +237,23 @@ internal class CefBrowserCompose(
             listOf(triggerEvent)
         )
 
-        DragSource.getDefaultDragSource().startDrag(
-            event,
-            /*dragCursor=*/null,
-            StringSelection(dragData.fragmentText),
-            object : DragSourceAdapter() {
+        DragSource.getDefaultDragSource()
+            .startDrag(event,/*dragCursor=*/null, StringSelection(dragData.fragmentText), object : DragSourceAdapter() {
                 override fun dragDropEnd(dsde: DragSourceDropEvent) {
                     dragSourceEndedAt(dsde.location, action)
                     dragSourceSystemDragEnded()
                 }
-            }
-        )
+            })
 
         return true
     }
 
     private fun getDndAction(mask: Int): Int = when {
-        mask and DragOperations.DRAG_OPERATION_COPY == DragOperations.DRAG_OPERATION_COPY ->
-            DnDConstants.ACTION_COPY
+        mask and DragOperations.DRAG_OPERATION_COPY == DragOperations.DRAG_OPERATION_COPY -> DnDConstants.ACTION_COPY
 
-        mask and DragOperations.DRAG_OPERATION_MOVE == DragOperations.DRAG_OPERATION_MOVE ->
-            DnDConstants.ACTION_MOVE
+        mask and DragOperations.DRAG_OPERATION_MOVE == DragOperations.DRAG_OPERATION_MOVE -> DnDConstants.ACTION_MOVE
 
-        mask and DragOperations.DRAG_OPERATION_LINK == DragOperations.DRAG_OPERATION_LINK ->
-            DnDConstants.ACTION_LINK
+        mask and DragOperations.DRAG_OPERATION_LINK == DragOperations.DRAG_OPERATION_LINK -> DnDConstants.ACTION_LINK
 
         else -> DnDConstants.ACTION_NONE
     }
@@ -291,13 +265,12 @@ internal class CefBrowserCompose(
     }
 
     override fun getScreenInfo(browser: CefBrowser, screenInfo: CefScreenInfo): Boolean {
-        screenInfo.Set(
-            /* device_scale_factor = */ scaleFactor,
-            /* depth = */ depth,
-            /* depth_per_component = */ depthPerComponent,
-            /* is_monochrome = */ false,
-            /* rect = */ contentRect.bounds,
-            /* availableRect = */ contentRect.bounds
+        screenInfo.Set(/* device_scale_factor = */ scaleFactor,/* depth = */
+            depth,/* depth_per_component = */
+            depthPerComponent,/* is_monochrome = */
+            false,/* rect = */
+            contentRect.bounds,/* availableRect = */
+            contentRect.bounds
         )
 
         return true
@@ -318,18 +291,17 @@ internal class CefBrowserCompose(
         val scrollAmount = event.scrollAmount * WHEEL_ROTATION_FACTOR
 
         sendMouseWheelEvent(
-            MouseWheelEvent(
-                /* source = */ event.component,
-                /* id = */ event.id,
-                /* when = */ event.getWhen(),
-                /* modifiers = */ event.modifiersEx,
-                /* x = */ event.x + contentRect.x,
-                /* y = */ event.y + contentRect.y,
-                /* clickCount = */ event.clickCount,
-                /* popupTrigger = */ event.isPopupTrigger,
-                /* scrollType = */ event.scrollType,
-                /* scrollAmount = */ scrollAmount,
-                /* wheelRotation = */ wheelRotation
+            MouseWheelEvent(/* source = */ event.component,/* id = */
+                event.id,/* when = */
+                event.getWhen(),/* modifiers = */
+                event.modifiersEx,/* x = */
+                event.x + contentRect.x,/* y = */
+                event.y + contentRect.y,/* clickCount = */
+                event.clickCount,/* popupTrigger = */
+                event.isPopupTrigger,/* scrollType = */
+                event.scrollType,/* scrollAmount = */
+                scrollAmount,/* wheelRotation = */
+                wheelRotation
             )
         )
     }
